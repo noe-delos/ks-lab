@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react/no-unescaped-entities */
 /* eslint-disable @next/next/no-img-element */
 "use client";
@@ -63,7 +64,6 @@ import {
   YAxis,
 } from "recharts";
 
-
 interface Project {
   id: string;
   name: string;
@@ -101,7 +101,7 @@ const chartData = [
   { month: "Juin", projects: 30, tickets: 25, members: 42 },
 ];
 
-const chartConfig = {
+const chartConfig: any = {
   projects: {
     label: "Projets",
     color: "hsl(210, 100%, 50%)",
@@ -171,7 +171,7 @@ function ActivityChart() {
             Évolution des projets, tickets et membres
           </CardDescription>
         </div>
-        <DateRangePicker value={dateRange} onChange={setDateRange} />
+        <DateRangePicker value={dateRange} onChange={setDateRange as any} />
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig}>
