@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @next/next/no-img-element */
 "use client";
 import { Button } from "@/components/ui/button";
@@ -223,7 +224,7 @@ const ProjectCard = ({
 };
 
 const Projects: React.FC<ProjectsProps> = ({ initialProjects }) => {
-  const [projects, setProjects] = useState<Project[]>(() => {
+  const [projects, setProjects] = useState<Project[]>((): any => {
     // Initialize projects with positions from localStorage or default order
     if (typeof window !== "undefined") {
       const storedPositions = localStorage.getItem(STORAGE_KEY);
@@ -240,7 +241,9 @@ const Projects: React.FC<ProjectsProps> = ({ initialProjects }) => {
               ? positionMap.get(project.id)
               : initialProjects.findIndex((p) => p.id === project.id),
           }))
-          .sort((a, b) => (a.position || 0) - (b.position || 0));
+          .sort(
+            (a, b) => ((a.position as any) || 0) - ((b.position as any) || 0)
+          );
       }
     }
     // If no stored positions, assign default positions

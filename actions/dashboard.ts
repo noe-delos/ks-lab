@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use server";
 
 import { supabaseAdmin } from "@/utils/supabase/admin";
@@ -13,6 +14,8 @@ export type UserProfile = {
     id: string;
     name: string;
     code: string;
+    type?: string;
+    updated_at?: string;
     icon_url: string | null;
     theme_color: string;
   } | null;
@@ -48,7 +51,7 @@ export async function getUserProfile(): Promise<UserProfile | null> {
   }
 
   // Fetch user's profile and company details in a single query
-  const { data: profile, error: profileError } = await supabaseAdmin
+  const { data: profile, error: profileError }: any = await supabaseAdmin
     .from("companies")
     .select(
       `
@@ -89,7 +92,7 @@ export async function getDashboardData() {
   const profile = await getUserProfile();
   if (!profile || !profile.company) return null;
 
-  const { data: stats, error: statsError } = await supabaseAdmin
+  const { data: stats, error: statsError }: any = await supabaseAdmin
     .from("projects")
     .select(
       `
@@ -137,7 +140,7 @@ export async function getDashboardData() {
       urgentTickets: stats?.tickets[0]?.count || 0,
     },
     projects:
-      projects?.map((p) => ({
+      projects?.map((p: any) => ({
         ...p,
         objectives_completed: p.objectives_completed[0]?.count || 0,
         urgent_tickets: p.urgent_tickets[0]?.count || 0,
