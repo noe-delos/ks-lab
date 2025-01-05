@@ -1,5 +1,5 @@
 // app/dashboard/layout.tsx
-import { getUserProfile } from "@/actions/dashboard";
+import { getUserProfile, Project } from "@/actions/dashboard";
 import {
   CompanyBranding,
   CompanyBrandingSkeleton,
@@ -18,6 +18,7 @@ import {
   SidebarHeader,
   SidebarProvider,
 } from "@/components/ui/sidebar";
+import { supabaseAdmin } from "@/utils/supabase/admin";
 import { Suspense } from "react";
 
 export default async function DashboardLayout({
@@ -27,6 +28,12 @@ export default async function DashboardLayout({
 }) {
   const profile = await getUserProfile();
   if (!profile) return null;
+
+  const { data: projects } = await supabaseAdmin
+    .from("projects")
+    .select("*")
+    .eq("company_id", profile.company?.id)
+    .order("created_at", { ascending: false });
 
   return (
     <div className="h-full bg-[hsl(var(--background))]">
@@ -53,7 +60,10 @@ export default async function DashboardLayout({
         </div>
         <main className="overflow-hidden hidden md:block w-full p-6 pl-0 pb-0 pr-0 ">
           <div className="bg-card rounded-tl-2xl border shadow-[0_2px_8px_0_rgba(0,0,0,0.08)] h-full">
-            <NavigationHeader profile={profile} />
+            <NavigationHeader
+              profile={profile}
+              projects={projects as Project[]}
+            />
             {children}
           </div>
         </main>

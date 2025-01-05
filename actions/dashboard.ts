@@ -36,6 +36,7 @@ export interface Project {
   created_at: string;
   objectives_completed: number;
   urgent_tickets: number;
+  picture_url?: string;
 }
 
 export async function getUserProfile(): Promise<UserProfile | null> {

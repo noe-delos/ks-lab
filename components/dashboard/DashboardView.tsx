@@ -373,7 +373,13 @@ function MeetingsList() {
   );
 }
 
-function SortableProjectCard({ project }: { project: Project }) {
+function SortableProjectCard({
+  project,
+  theme,
+}: {
+  project: Project;
+  theme: string;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: project.id });
 
@@ -398,10 +404,13 @@ function SortableProjectCard({ project }: { project: Project }) {
 
           <div className="flex flex-col h-full">
             <div className="mb-auto">
-              <Icon
-                icon={project.icon}
-                className="w-8 h-8 text-blue-600 mb-3"
-              />
+              {theme && (
+                <Icon
+                  icon={project.icon}
+                  color={theme}
+                  className={`w-8 h-8 text-[${theme}] mb-3`}
+                />
+              )}
               <h3 className="font-semibold text-lg mb-1">{project.name}</h3>
               <Badge variant="outline" className="text-xs">
                 {project.version}
@@ -471,9 +480,11 @@ function SortableTableRow({ project }: { project: Project }) {
 
 interface ProjectsSectionProps {
   projects?: Project[];
+  theme?: string;
 }
 
 export function ProjectsSection({
+  theme,
   projects = mockProjects,
 }: ProjectsSectionProps) {
   const [items, setItems] = React.useState(projects);
@@ -522,7 +533,10 @@ export function ProjectsSection({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <SortableProjectCard project={project} />
+                  <SortableProjectCard
+                    project={project}
+                    theme={theme as string}
+                  />
                 </motion.div>
               ))}
             </SortableContext>
@@ -621,12 +635,18 @@ export function DashboardView({ profile }: { profile: UserProfile }) {
 
           <div className="flex items-center gap-4 mt-4">
             <div className="flex gap-3">
-              <Badge className="rounded-full border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1">
+              <Badge
+                className={`rounded-full border border-blue-200 bg-[${
+                  profile.company ? profile.company.theme_color : "currentColor"
+                }] text-[${
+                  profile.company ? profile.company.theme_color : "currentColor"
+                }] hover:bg-blue-100 px-3 py-1`}
+              >
                 <Icon
                   icon="icon-park-solid:building-one"
                   className="w-4 h-4 mr-2"
                 />
-                {profile.company?.type || "Enterprise"}
+                {profile.company?.type || "Entreprise"}
               </Badge>
               <Badge className="rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 px-3 py-1">
                 <Avatar className="w-4 h-4 mr-2">
@@ -662,7 +682,7 @@ export function DashboardView({ profile }: { profile: UserProfile }) {
           transition={{ duration: 0.3 }}
           className="bg-gray-50 p-6 rounded-xl"
         >
-          <ProjectsSection />
+          <ProjectsSection theme={profile?.company?.theme_color} />
         </motion.section>
 
         <motion.section

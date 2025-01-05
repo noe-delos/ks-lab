@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { rouge } from "@/config/styling";
 import { createClient } from "@/utils/supabase/client";
 
 export default function LoginPage() {
@@ -57,11 +58,11 @@ export default function LoginPage() {
           transition={{ duration: 0.5 }}
         >
           <Image
-            src="/logo.png"
+            src="/logo/ks-logo-black.png"
             alt="Logo"
-            width={100}
-            height={40}
-            className="opacity-70"
+            width={60}
+            height={80}
+            className="opacity-100"
           />
         </motion.div>
       </div>
@@ -75,7 +76,12 @@ export default function LoginPage() {
           className="w-full space-y-6"
         >
           <div className="space-y-2 text-center">
-            <h1 className="text-3xl font-bold tracking-tight">Welcome back</h1>
+            <h1
+              className="text-7xl tracking-tight"
+              style={{ fontFamily: rouge.style.fontFamily }}
+            >
+              Bienvenue
+            </h1>
             <p className="text-gray-500">
               Enter your credentials to access your account
             </p>
@@ -147,13 +153,13 @@ export default function LoginPage() {
               <div className="w-full border-t border-gray-200" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="bg-white px-2 text-gray-500">or</span>
+              <span className="bg-gray-50 px-2 text-gray-500">or</span>
             </div>
           </div>
 
           <Button
             variant="outline"
-            className="w-full"
+            className="w-full cursor-not-allowed"
             onClick={() =>
               supabase.auth.signInWithOAuth({
                 provider: "google",
@@ -162,7 +168,7 @@ export default function LoginPage() {
                 },
               })
             }
-            disabled={isLoading}
+            disabled={true}
           >
             <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
               <path

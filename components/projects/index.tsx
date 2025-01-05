@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @next/next/no-img-element */
 "use client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +10,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   closestCenter,
@@ -30,8 +37,10 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { motion } from "framer-motion";
+import { Icon } from "@iconify/react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
+  ArrowRight,
   Grid,
   GripVertical,
   List,
@@ -50,7 +59,7 @@ export interface Project {
   status: "planning" | "in_progress" | "on_hold" | "completed" | "cancelled";
   start_date: string | null;
   end_date: string | null;
-  picture_url: string | null;
+  picture_url: string;
   created_at: string;
   updated_at: string;
   position?: number;
@@ -58,6 +67,7 @@ export interface Project {
 
 interface ProjectsProps {
   initialProjects: Project[];
+  theme?: string;
 }
 
 const STORAGE_KEY = "project-positions";
@@ -73,10 +83,13 @@ const statusTranslations = {
 const SortableProjectCard = ({
   project,
   view,
+  theme,
 }: {
+  theme: string;
   project: Project;
   view: "grid" | "list";
 }) => {
+  const router = useRouter();
   const {
     attributes,
     listeners,
@@ -97,7 +110,119 @@ const SortableProjectCard = ({
     transition,
     touchAction: "none",
     zIndex: isDragging ? 100 : 1,
+    width: "100%",
   };
+
+  if (view === "list") {
+    const formatDate = (dateString: string | null) => {
+      if (!dateString) return "-";
+      return new Date(dateString).toLocaleDateString("fr-FR", {
+        day: "numeric",
+        month: "short",
+      });
+    };
+
+    return (
+      <motion.tr
+        ref={setNodeRef}
+        style={style}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        transition={{ duration: 0.2 }}
+        className="group hover:bg-slate-50 w-full"
+      >
+        <TableCell className="w-[40px] py-3 pl-4">
+          <div
+            {...attributes}
+            {...listeners}
+            onClick={(e) => e.stopPropagation()}
+            className="opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <GripVertical className="h-4 w-4 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing" />
+          </div>
+        </TableCell>
+        <TableCell className="w-[300px] py-3">
+          <div className="flex items-center gap-3">
+            <div className="relative flex-shrink-0">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center">
+                {theme && (
+                  <Icon
+                    icon={project.picture_url}
+                    width="24"
+                    height="24"
+                    color={theme}
+                    className={`text-[${theme}]`}
+                  />
+                )}
+              </div>
+              <div
+                className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${
+                  project.status === "completed"
+                    ? "bg-green-400"
+                    : project.status === "in_progress"
+                    ? "bg-blue-400"
+                    : project.status === "on_hold"
+                    ? "bg-orange-400"
+                    : project.status === "cancelled"
+                    ? "bg-red-400"
+                    : "bg-yellow-400"
+                }`}
+              />
+            </div>
+            <span className="font-medium truncate">{project.name}</span>
+          </div>
+        </TableCell>
+        <TableCell className="w-[150px] py-3">
+          <span
+            className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+              {
+                planning:
+                  "bg-yellow-100 text-yellow-800 border border-yellow-200",
+                in_progress: "bg-blue-100 text-blue-800 border border-blue-200",
+                on_hold:
+                  "bg-orange-100 text-orange-800 border border-orange-200",
+                completed:
+                  "bg-green-100 text-green-800 border border-green-200",
+                cancelled: "bg-red-100 text-red-800 border border-red-200",
+              }[project.status]
+            }`}
+          >
+            {statusTranslations[project.status]}
+          </span>
+        </TableCell>
+        <TableCell className="w-[200px] py-3">
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-gray-700">Début:</span>
+              <span className="text-xs text-gray-500">
+                {formatDate(project.start_date)}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-gray-700">Fin:</span>
+              <span className="text-xs text-gray-500">
+                {formatDate(project.end_date)}
+              </span>
+            </div>
+          </div>
+        </TableCell>
+        <TableCell className="w-[60px] py-3 pr-4 text-right">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(`/dashboard/projects/${project.id}`);
+            }}
+          >
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </TableCell>
+      </motion.tr>
+    );
+  }
 
   return (
     <motion.div
@@ -106,9 +231,11 @@ const SortableProjectCard = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className={view === "list" ? "mb-2" : ""}
+      layout="position"
+      className="w-full"
     >
       <ProjectCard
+        theme={theme}
         project={project}
         view={view}
         dragHandleProps={{ ...attributes, ...listeners }}
@@ -118,13 +245,14 @@ const SortableProjectCard = ({
 };
 
 const ProjectCard = ({
+  theme,
   project,
-  view,
   dragHandleProps,
 }: {
   project: Project;
   view: "grid" | "list";
   dragHandleProps?: any;
+  theme: string;
 }) => {
   const router = useRouter();
 
@@ -146,10 +274,8 @@ const ProjectCard = ({
 
   return (
     <Card
-      className={`group relative cursor-pointer hover:shadow-md transition-all duration-200 ${
-        view === "list" ? "mb-2" : "h-full"
-      }`}
-      onClick={() => router.push(`/projects/${project.id}`)}
+      className="group relative cursor-pointer hover:shadow-md transition-all duration-200 w-full"
+      onClick={() => router.push(`/dashboard/projects/${project.id}`)}
     >
       <div
         {...dragHandleProps}
@@ -159,13 +285,17 @@ const ProjectCard = ({
         <GripVertical className="h-5 w-5 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing" />
       </div>
 
-      <CardHeader className="flex flex-row items-start gap-4 pt-3 pb-2">
+      <CardHeader className="flex flex-row items-start gap-4 pt-3 pb-5">
         <div className="relative">
-          <img
-            src={project.picture_url || "/api/placeholder/32/32"}
-            alt={project.name}
-            className="w-12 h-12 rounded-lg object-cover shadow-sm"
-          />
+          <div className="w-12 h-12 rounded-lg flex items-center justify-center">
+            <Icon
+              icon={project.picture_url}
+              width="32"
+              height="32"
+              color={theme}
+              className={`text-[${theme}]`}
+            />
+          </div>
           <div
             className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${
               project.status === "completed"
@@ -223,17 +353,14 @@ const ProjectCard = ({
   );
 };
 
-const Projects: React.FC<ProjectsProps> = ({ initialProjects }) => {
-  const [projects, setProjects] = useState<Project[]>((): any => {
-    // Initialize projects with positions from localStorage or default order
+const Projects: React.FC<ProjectsProps> = ({ initialProjects, theme }) => {
+  const [projects, setProjects] = useState<Project[]>((): Project[] => {
     if (typeof window !== "undefined") {
       const storedPositions = localStorage.getItem(STORAGE_KEY);
       if (storedPositions) {
         const positions = JSON.parse(storedPositions);
-        // Create a mapping of project IDs to their positions
         const positionMap = new Map(Object.entries(positions));
 
-        // Sort projects based on stored positions or keep original order
         return initialProjects
           .map((project) => ({
             ...project,
@@ -242,11 +369,11 @@ const Projects: React.FC<ProjectsProps> = ({ initialProjects }) => {
               : initialProjects.findIndex((p) => p.id === project.id),
           }))
           .sort(
-            (a, b) => ((a.position as any) || 0) - ((b.position as any) || 0)
-          );
+            (a, b) =>
+              ((a.position as number) || 0) - ((b.position as number) || 0)
+          ) as any;
       }
     }
-    // If no stored positions, assign default positions
     return initialProjects.map((project, index) => ({
       ...project,
       position: index,
@@ -269,7 +396,6 @@ const Projects: React.FC<ProjectsProps> = ({ initialProjects }) => {
     })
   );
 
-  // Update localStorage whenever projects change
   useEffect(() => {
     if (typeof window !== "undefined") {
       const positions = projects.reduce(
@@ -291,10 +417,8 @@ const Projects: React.FC<ProjectsProps> = ({ initialProjects }) => {
         const oldIndex = items.findIndex((item) => item.id === active.id);
         const newIndex = items.findIndex((item) => item.id === over.id);
 
-        // Create new array with updated positions
         const reorderedItems = arrayMove(items, oldIndex, newIndex);
 
-        // Update positions for all items
         return reorderedItems.map((item, index) => ({
           ...item,
           position: index,
@@ -400,22 +524,46 @@ const Projects: React.FC<ProjectsProps> = ({ initialProjects }) => {
                 : verticalListSortingStrategy
             }
           >
-            <motion.div
-              layout
-              className={
-                view === "grid"
-                  ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                  : "flex flex-col gap-2"
-              }
-            >
-              {filteredAndSortedProjects.map((project) => (
-                <SortableProjectCard
-                  key={project.id}
-                  project={project}
-                  view={view}
-                />
-              ))}
-            </motion.div>
+            <AnimatePresence>
+              {view === "grid" ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredAndSortedProjects.map((project) => (
+                    <SortableProjectCard
+                      key={project.id}
+                      project={project}
+                      view={view}
+                      theme={theme as string}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="w-full bg-white rounded-lg border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[40px] py-3 pl-4"></TableHead>
+                        <TableHead className="w-[300px] py-3">Projet</TableHead>
+                        <TableHead className="w-[150px] py-3">Statut</TableHead>
+                        <TableHead className="w-[200px] py-3">Dates</TableHead>
+                        <TableHead className="w-[60px] py-3 pr-4 text-right">
+                          Actions
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredAndSortedProjects.map((project) => (
+                        <SortableProjectCard
+                          key={project.id}
+                          project={project}
+                          view={view}
+                          theme={theme as string}
+                        />
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </AnimatePresence>
           </SortableContext>
         </DndContext>
       </div>

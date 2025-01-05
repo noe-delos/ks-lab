@@ -23,6 +23,13 @@ export function NavigationItems({ role }: { role: UserProfile["role"] }) {
   const pathname = usePathname();
   const [searchQuery, setSearchQuery] = useState("");
 
+  const isActiveRoute = (href: string) => {
+    if (href === "/dashboard" && pathname === "/dashboard") {
+      return true;
+    }
+    return pathname.startsWith(href) && href !== "/dashboard";
+  };
+
   return (
     <div className="flex flex-col gap-0 justify-between h-full pt-5">
       <div className="mb-0">
@@ -54,7 +61,7 @@ export function NavigationItems({ role }: { role: UserProfile["role"] }) {
                     onClick={() => router.push(item.href)}
                     className={cn(
                       "relative py-4 w-full",
-                      pathname === item.href
+                      isActiveRoute(item.href)
                         ? "bg-white rounded-lg shadow-sm border border-zinc-100"
                         : ""
                     )}
@@ -65,14 +72,14 @@ export function NavigationItems({ role }: { role: UserProfile["role"] }) {
                           icon={item.icon}
                           className={cn(
                             "w-5 h-5 text-zinc-900",
-                            pathname === item.href
+                            isActiveRoute(item.href)
                               ? "text-zinc-900"
                               : "text-zinc-400"
                           )}
                         />
                         <span
                           className={cn(
-                            pathname === item.href
+                            isActiveRoute(item.href)
                               ? "text-zinc-900"
                               : "text-zinc-500"
                           )}
@@ -89,7 +96,7 @@ export function NavigationItems({ role }: { role: UserProfile["role"] }) {
                         {item.title === "Projects" && (
                           <span
                             className={cn(
-                              pathname === item.href
+                              isActiveRoute(item.href)
                                 ? "text-zinc-900"
                                 : "text-zinc-500"
                             )}
@@ -100,7 +107,7 @@ export function NavigationItems({ role }: { role: UserProfile["role"] }) {
                         {item.title === "Tickets" && (
                           <span
                             className={cn(
-                              pathname === item.href
+                              isActiveRoute(item.href)
                                 ? "text-zinc-900"
                                 : "text-zinc-500"
                             )}

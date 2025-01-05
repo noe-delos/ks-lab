@@ -1,7 +1,6 @@
-/* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { UserProfile } from "@/actions/dashboard";
+import { Project, UserProfile } from "@/actions/dashboard";
 import { Button } from "@/components/ui/button";
 import { mainNavItems } from "@/config/navigation";
 import { Icon } from "@iconify/react";
@@ -14,9 +13,18 @@ type BreadcrumbItem = {
   icon: string;
   isCompany?: boolean;
   isNew?: boolean;
+  isProject?: boolean;
+  isTicket?: boolean;
+  pictureUrl?: string;
 };
 
-export function NavigationHeader({ profile }: { profile: UserProfile }) {
+export function NavigationHeader({
+  profile,
+  projects,
+}: {
+  profile: UserProfile;
+  projects: Project[];
+}) {
   const pathname = usePathname();
   const companyName = profile.company?.name;
 
@@ -43,8 +51,61 @@ export function NavigationHeader({ profile }: { profile: UserProfile }) {
       return breadcrumbs;
     }
 
-    // Find matching nav item for current path
-    const currentNavItem = mainNavItems.find((item) => item.href === pathname);
+    // Handle projects section
+    if (paths.includes("projects")) {
+      // Add Projects nav item
+      breadcrumbs.push({
+        title: "Projects",
+        href: "/dashboard/projects",
+        icon: "ion:cube",
+      });
+
+      // If we're on a specific project page
+      if (paths.length > 2 && paths[1] === "projects") {
+        const projectId = paths[2];
+        const currentProject = projects.find((p) => p.id === projectId);
+
+        if (currentProject) {
+          breadcrumbs.push({
+            title: currentProject.name,
+            href: `/dashboard/projects/${currentProject.id}`,
+            icon: "ion:cube",
+            isProject: true,
+            pictureUrl: currentProject.picture_url,
+          });
+        }
+      }
+
+      return breadcrumbs;
+    }
+
+    // Handle tickets section
+    if (paths.includes("tickets")) {
+      // Add Tickets nav item
+      breadcrumbs.push({
+        title: "Tickets",
+        href: "/dashboard/tickets",
+        icon: "solar:ticket-bold-duotone",
+      });
+
+      // If we're on a specific ticket page
+      if (paths.length > 2 && paths[1] === "tickets") {
+        const ticketId = paths[2];
+        breadcrumbs.push({
+          title: `Ticket ${ticketId.slice(0, 8)}...`,
+          href: `/dashboard/tickets/${ticketId}`,
+          icon: "solar:ticket-bold-duotone",
+          isTicket: true,
+        });
+      }
+
+      return breadcrumbs;
+    }
+
+    // Handle other nav sections
+    const currentNavItem = mainNavItems.find((item) =>
+      pathname.startsWith(item.href)
+    );
     if (currentNavItem) {
       breadcrumbs.push(currentNavItem as BreadcrumbItem);
     }
@@ -71,23 +132,45 @@ export function NavigationHeader({ profile }: { profile: UserProfile }) {
             <Link
               href={item.href}
               className={`flex items-center gap-2 ${
-                isDashboard && index === 0
+                (isDashboard && index === 0) || item.isProject || item.isTicket
                   ? "text-gray-400 pointer-events-none"
                   : "text-gray-600 hover:text-gray-900 hover:underline"
               }`}
             >
               {item.isCompany ? (
-                <img
-                  src={profile.company?.icon_url || ""}
-                  alt={companyName || "Company icon"}
+                <Icon
+                  icon={profile.company?.icon_url || ""}
                   width={16}
                   height={16}
                   className="rounded-sm"
                 />
+              ) : item.isProject && item.pictureUrl ? (
+                <Icon
+                  icon={item.pictureUrl}
+                  width={16}
+                  height={16}
+                  className="rounded-sm object-cover"
+                />
               ) : (
-                <Icon icon={item.icon} className="w-4 h-4" />
+                <Icon
+                  icon={item.icon}
+                  className={`w-4 h-4 ${
+                    item.isProject || item.isTicket ? "text-blue-500" : ""
+                  }`}
+                />
               )}
-              <span className="text-sm">{item.title}</span>
+              <span
+                className={`text-sm ${
+                  item.isProject || item.isTicket ? "font-medium" : ""
+                }`}
+              >
+                {item.title}
+              </span>
+              {item.isNew && (
+                <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
+                  New
+                </span>
+              )}
             </Link>
           </div>
         ))}
