@@ -3,10 +3,17 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { UserProfile } from "@/actions/dashboard";
+import {
+  UserProfile,
+  getActivityData,
+  getCompanyMeetings,
+  getCompanyProjects,
+  getCompanyUsers,
+  type CompanyUser,
+  type Meeting,
+} from "@/actions/dashboard";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   DndContext,
   DragEndEvent,
@@ -21,7 +28,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -40,6 +46,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
+
 import {
   Table,
   TableBody,
@@ -49,12 +57,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { SortableContext, arrayMove, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Icon } from "@iconify/react";
 import { motion } from "framer-motion";
-import { TrendingUp } from "lucide-react";
-import React, { useState } from "react";
+import { GripVertical, Ticket } from "lucide-react";
+import React, { useEffect, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -63,45 +77,18 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { CreateMeetingDialog } from "./CreateMeetingDialog";
 
 interface Project {
   id: string;
   name: string;
-  status: "active" | "completed" | "pending";
+  status: "planning" | "in_progress" | "on_hold" | "completed" | "cancelled";
   progress: number;
   icon: string;
   version: string;
 }
 
-const mockProjects: Project[] = [
-  {
-    id: "1",
-    name: "Project Alpha",
-    status: "active",
-    progress: 75,
-    icon: "solar:document-add-bold-duotone",
-    version: "v1.2.0",
-  },
-  {
-    id: "2",
-    name: "Project Beta",
-    status: "pending",
-    progress: 30,
-    icon: "solar:calendar-mark-bold-duotone",
-    version: "v0.8.5",
-  },
-];
-
-const chartData = [
-  { month: "Jan", projects: 12, tickets: 45, members: 23 },
-  { month: "Feb", projects: 19, tickets: 38, members: 28 },
-  { month: "Mar", projects: 15, tickets: 42, members: 30 },
-  { month: "Apr", projects: 21, tickets: 35, members: 35 },
-  { month: "Mai", projects: 25, tickets: 30, members: 38 },
-  { month: "Juin", projects: 30, tickets: 25, members: 42 },
-];
-
-const chartConfig: any = {
+const chartConfig: ChartConfig = {
   projects: {
     label: "Projets",
     color: "hsl(210, 100%, 50%)",
@@ -114,53 +101,26 @@ const chartConfig: any = {
     label: "Membres",
     color: "hsl(210, 60%, 70%)",
   },
-} satisfies ChartConfig;
+};
 
-const mockUsers = [
-  {
-    id: "1",
-    name: "Sophie Martin",
-    email: "sophie.m@company.com",
-    role: "Project Manager",
-    status: "active",
-    joinDate: "2024-01-15",
-    avatar: "https://i.pravatar.cc/150?img=1",
-  },
-  {
-    id: "2",
-    name: "Thomas Bernard",
-    email: "t.bernard@company.com",
-    role: "Developer",
-    status: "active",
-    joinDate: "2024-02-01",
-    avatar: "https://i.pravatar.cc/150?img=2",
-  },
-];
-
-const mockMeetings = [
-  {
-    id: "1",
-    title: "Revue de Project Alpha",
-    date: "2024-03-01T10:00:00",
-    participants: ["Sophie Martin", "Thomas Bernard"],
-    description: "Revue mensuelle du projet Alpha avec l'équipe",
-    files: ["presentation.pdf", "rapport.docx"],
-  },
-  {
-    id: "2",
-    title: "Planning Sprint",
-    date: "2024-03-02T14:30:00",
-    participants: ["Sophie Martin"],
-    description: "Planification du prochain sprint",
-    files: ["backlog.xlsx"],
-  },
-];
-
-function ActivityChart() {
+function ActivityChart(profile: any) {
   const [dateRange, setDateRange] = useState({
     from: new Date(2024, 0, 1),
     to: new Date(),
   });
+  const [chartData, setChartData] = useState([]);
+
+  useEffect(() => {
+    async function fetchActivityData() {
+      const data = await getActivityData(
+        profile?.profile.company?.id as string
+      );
+      setChartData(data as any);
+    }
+    if (profile?.profile.company?.id) {
+      fetchActivityData();
+    }
+  }, [profile]);
 
   return (
     <Card>
@@ -207,23 +167,11 @@ function ActivityChart() {
           </ResponsiveContainer>
         </ChartContainer>
       </CardContent>
-      <CardFooter>
-        <div className="flex w-full items-start gap-2 text-sm">
-          <div className="grid gap-2">
-            <div className="flex items-center gap-2 font-medium leading-none">
-              En hausse de 5.2% ce mois-ci <TrendingUp className="h-4 w-4" />
-            </div>
-            <div className="flex items-center gap-2 leading-none text-muted-foreground">
-              Janvier - Juin 2024
-            </div>
-          </div>
-        </div>
-      </CardFooter>
     </Card>
   );
 }
 
-function MeetingDialog({ meeting }: { meeting: (typeof mockMeetings)[0] }) {
+function MeetingDialog({ meeting }: { meeting: Meeting }) {
   return (
     <DialogContent className="sm:max-w-[425px]">
       <DialogHeader>
@@ -244,8 +192,8 @@ function MeetingDialog({ meeting }: { meeting: (typeof mockMeetings)[0] }) {
           <h4 className="font-medium">Participants</h4>
           <div className="flex gap-2">
             {meeting.participants.map((participant) => (
-              <Badge key={participant} variant="secondary">
-                {participant}
+              <Badge key={participant.id} variant="secondary">
+                {participant.name}
               </Badge>
             ))}
           </div>
@@ -254,26 +202,28 @@ function MeetingDialog({ meeting }: { meeting: (typeof mockMeetings)[0] }) {
           <h4 className="font-medium">Description</h4>
           <p className="text-sm text-gray-500">{meeting.description}</p>
         </div>
-        <div className="grid gap-2">
-          <h4 className="font-medium">Fichiers attachés</h4>
-          <div className="flex flex-wrap gap-2">
-            {meeting.files.map((file) => (
-              <Badge key={file} variant="outline" className="cursor-pointer">
-                <Icon
-                  icon="material-symbols:file-present"
-                  className="mr-1 w-4 h-4"
-                />
-                {file}
-              </Badge>
-            ))}
+        {meeting.files && meeting.files.length > 0 && (
+          <div className="grid gap-2">
+            <h4 className="font-medium">Fichiers attachés</h4>
+            <div className="flex flex-wrap gap-2">
+              {meeting.files.map((file) => (
+                <Badge key={file} variant="outline" className="cursor-pointer">
+                  <Icon
+                    icon="material-symbols:file-present"
+                    className="mr-1 w-4 h-4"
+                  />
+                  {file}
+                </Badge>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </DialogContent>
   );
 }
 
-function UsersTable() {
+function UsersTable({ users }: { users: CompanyUser[] }) {
   return (
     <div className="rounded-md border">
       <Table>
@@ -286,12 +236,12 @@ function UsersTable() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {mockUsers.map((user) => (
+          {users.map((user) => (
             <TableRow key={user.id}>
               <TableCell className="font-medium">
                 <div className="flex items-center gap-2">
                   <Avatar className="w-8 h-8">
-                    <AvatarImage src={user.avatar} />
+                    <AvatarImage src={user.avatar_url} />
                     <AvatarFallback>
                       {user.name
                         .split(" ")
@@ -314,7 +264,7 @@ function UsersTable() {
                 </Badge>
               </TableCell>
               <TableCell>
-                {new Date(user.joinDate).toLocaleDateString("fr-FR")}
+                {new Date(user.join_date).toLocaleDateString("fr-FR")}
               </TableCell>
             </TableRow>
           ))}
@@ -324,23 +274,21 @@ function UsersTable() {
   );
 }
 
-function MeetingsList() {
+function MeetingsList({
+  meetings,
+  users,
+}: {
+  meetings: Meeting[];
+  users: CompanyUser[];
+}) {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-semibold">Réunions</h2>
-        <Button
-          onClick={() =>
-            window.open("https://calendly.com/your-link", "_blank")
-          }
-          size="sm"
-        >
-          <Icon icon="material-symbols:add" className="mr-1 w-4 h-4" />
-          Nouvelle réunion
-        </Button>
+        <CreateMeetingDialog users={users} />
       </div>
       <div className="space-y-2">
-        {mockMeetings.map((meeting) => (
+        {meetings.map((meeting) => (
           <Dialog key={meeting.id}>
             <DialogTrigger asChild>
               <Card className="cursor-pointer hover:bg-gray-50">
@@ -396,33 +344,61 @@ function SortableProjectCard({
             {...listeners}
             className="absolute top-2 right-2 cursor-grab active:cursor-grabbing"
           >
-            <Icon
-              icon="material-symbols:drag-indicator"
-              className="w-5 h-5 text-gray-400 hover:text-gray-600"
-            />
+            <GripVertical className="w-5 h-5 text-gray-400" />
           </div>
 
           <div className="flex flex-col h-full">
             <div className="mb-auto">
-              {theme && (
-                <Icon
-                  icon={project.icon}
-                  color={theme}
-                  className={`w-8 h-8 text-[${theme}] mb-3`}
-                />
-              )}
-              <h3 className="font-semibold text-lg mb-1">{project.name}</h3>
-              <Badge variant="outline" className="text-xs">
-                {project.version}
-              </Badge>
+              <div className="flex items-center gap-3 mb-3">
+                {theme && (
+                  <div
+                    className="p-2 rounded-lg"
+                    style={{ backgroundColor: `${theme}15` }}
+                  >
+                    <Icon
+                      icon={project.picture_url}
+                      className="w-6 h-6"
+                      style={{ color: theme }}
+                    />
+                  </div>
+                )}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <h3 className="font-semibold text-lg truncate cursor-help">
+                        {project.name}
+                      </h3>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-sm">{project.description}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+
+              <div className="space-y-2">
+                <Progress value={project.progress} className="h-1.5" />
+                <div className="flex items-center justify-between text-xs text-gray-600">
+                  <span>{project.progress}%</span>
+                  <div className="flex items-center gap-1">
+                    <Ticket className="w-3 h-3" />
+                    <span>{project.tickets[0]?.count || 0}</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="flex items-center justify-between mt-4">
-              <div className="text-sm text-gray-600">{project.progress}%</div>
+            <div className="flex items-center justify-between mt-2">
+              <Badge variant="outline" className="text-xs">
+                v{project.version || "1.0"}
+              </Badge>
               <Badge
-                variant={project.status === "active" ? "default" : "secondary"}
+                variant={
+                  project.status === "in_progress" ? "default" : "secondary"
+                }
+                className="text-xs"
               >
-                {project.status}
+                {formatProjectStatus(project.status)}
               </Badge>
             </div>
           </div>
@@ -440,6 +416,8 @@ function SortableTableRow({ project }: { project: Project }) {
     transform: CSS.Transform.toString(transform),
     transition,
   };
+
+  const projectIcon = getProjectIcon(project.status);
 
   return (
     <motion.tr
@@ -459,13 +437,15 @@ function SortableTableRow({ project }: { project: Project }) {
               className="w-5 h-5 text-gray-400 hover:text-gray-600"
             />
           </div>
-          <Icon icon={project.icon} className="w-5 h-5 text-blue-600" />
+          <Icon icon={projectIcon} className="w-5 h-5 text-blue-600" />
           <div className="font-semibold">{project.name}</div>
         </div>
       </TableCell>
       <TableCell>
-        <Badge variant={project.status === "active" ? "default" : "secondary"}>
-          {project.status}
+        <Badge
+          variant={project.status === "in_progress" ? "default" : "secondary"}
+        >
+          {formatProjectStatus(project.status)}
         </Badge>
       </TableCell>
       <TableCell>
@@ -483,15 +463,53 @@ interface ProjectsSectionProps {
   theme?: string;
 }
 
+function getProjectIcon(status: string): string {
+  switch (status) {
+    case "planning":
+      return "solar:calendar-mark-bold-duotone";
+    case "in_progress":
+      return "solar:running-bold-duotone";
+    case "on_hold":
+      return "solar:pause-bold-duotone";
+    case "completed":
+      return "solar:check-circle-bold-duotone";
+    case "cancelled":
+      return "solar:close-circle-bold-duotone";
+    default:
+      return "solar:document-add-bold-duotone";
+  }
+}
+
+function formatProjectStatus(status: string): string {
+  switch (status) {
+    case "planning":
+      return "Planification";
+    case "in_progress":
+      return "En cours";
+    case "on_hold":
+      return "En pause";
+    case "completed":
+      return "Terminé";
+    case "cancelled":
+      return "Annulé";
+    default:
+      return status;
+  }
+}
+
 export function ProjectsSection({
   theme,
-  projects = mockProjects,
+  projects = [],
 }: ProjectsSectionProps) {
   const [items, setItems] = React.useState(projects);
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor)
   );
+
+  useEffect(() => {
+    setItems(projects);
+  }, [projects]);
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -586,7 +604,30 @@ export function ProjectsSection({
     </Tabs>
   );
 }
+
 export function DashboardView({ profile }: { profile: UserProfile }) {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [users, setUsers] = useState<CompanyUser[]>([]);
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+
+  useEffect(() => {
+    async function fetchDashboardData() {
+      if (profile?.company?.id) {
+        const [projectsData, usersData, meetingsData] = await Promise.all([
+          getCompanyProjects(profile.company.id),
+          getCompanyUsers(profile.company.id),
+          getCompanyMeetings(profile.company.id),
+        ]);
+
+        setProjects(projectsData as any);
+        setUsers(usersData);
+        setMeetings(meetingsData);
+      }
+    }
+
+    fetchDashboardData();
+  }, [profile?.company?.id]);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -597,7 +638,7 @@ export function DashboardView({ profile }: { profile: UserProfile }) {
       <motion.section
         initial={{ y: -10 }}
         animate={{ y: 0 }}
-        className="flex items-start gap-6 p-8 bg-white"
+        className="flex items-start gap-6 p-8 bg-white rounded-xl"
       >
         <div className="relative size-24">
           <div className="size-24 rounded-xl bg-gray-50 border-[1.5px] border-gray-100 flex items-center justify-center overflow-hidden">
@@ -636,11 +677,12 @@ export function DashboardView({ profile }: { profile: UserProfile }) {
           <div className="flex items-center gap-4 mt-4">
             <div className="flex gap-3">
               <Badge
-                className={`rounded-full border border-blue-200 bg-[${
-                  profile.company ? profile.company.theme_color : "currentColor"
-                }] text-[${
-                  profile.company ? profile.company.theme_color : "currentColor"
-                }] hover:bg-blue-100 px-3 py-1`}
+                className="rounded-full border border-blue-200 px-3 py-1"
+                style={{
+                  backgroundColor:
+                    profile.company?.theme_color || "currentColor",
+                  color: "white",
+                }}
               >
                 <Icon
                   icon="icon-park-solid:building-one"
@@ -682,7 +724,10 @@ export function DashboardView({ profile }: { profile: UserProfile }) {
           transition={{ duration: 0.3 }}
           className="bg-gray-50 p-6 rounded-xl"
         >
-          <ProjectsSection theme={profile?.company?.theme_color} />
+          <ProjectsSection
+            theme={profile?.company?.theme_color}
+            projects={projects}
+          />
         </motion.section>
 
         <motion.section
@@ -690,7 +735,7 @@ export function DashboardView({ profile }: { profile: UserProfile }) {
           animate={{ x: 0, opacity: 1 }}
           transition={{ duration: 0.3 }}
         >
-          <ActivityChart />
+          <ActivityChart profile={profile} />
         </motion.section>
       </div>
 
@@ -703,7 +748,7 @@ export function DashboardView({ profile }: { profile: UserProfile }) {
           className="space-y-4"
         >
           <h2 className="text-2xl font-semibold">Utilisateurs</h2>
-          <UsersTable />
+          <UsersTable users={users} />
         </motion.section>
 
         <motion.section
@@ -711,7 +756,7 @@ export function DashboardView({ profile }: { profile: UserProfile }) {
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.3 }}
         >
-          <MeetingsList />
+          <MeetingsList meetings={meetings} users={users} />
         </motion.section>
       </div>
     </motion.div>

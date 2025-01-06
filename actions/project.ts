@@ -7,7 +7,6 @@ export async function getProject(id: string) {
       `
       *,
       tickets (*),
-      project_objectives (*),
       timeline_events (*),
       project_attachments (*)
     `

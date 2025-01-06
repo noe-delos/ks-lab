@@ -163,7 +163,11 @@ export function TicketsList({
 
       <div className="flex-1 overflow-hidden rounded-xl bg-zinc-100">
         {tickets.length === 0 ? (
-          <div className="flex h-[68vh] grow items-center justify-center text-zinc-500">
+          <div
+            className={`flex grow items-center justify-center text-zinc-500 ${
+              listClassname ? "h-[30vh]" : "h-[68vh]"
+            }`}
+          >
             Aucun tickets enregistrés
           </div>
         ) : (

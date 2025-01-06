@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { updateProject } from "@/actions/project";
@@ -13,12 +12,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Project, Ticket } from "@/types";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { Icon } from "@iconify/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 
@@ -28,11 +25,17 @@ import { defaultLayoutPlugin } from "@react-pdf-viewer/default-layout";
 import { pageNavigationPlugin } from "@react-pdf-viewer/page-navigation";
 import { zoomPlugin } from "@react-pdf-viewer/zoom";
 
+// Import document preview components
+import { renderAsync } from "docx-preview";
+
 // Import styles
+import { IconSelector } from "@/components/ui/icon-selector";
+import { cn } from "@/lib/utils";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import "@react-pdf-viewer/default-layout/lib/styles/index.css";
 import "@react-pdf-viewer/page-navigation/lib/styles/index.css";
 import "@react-pdf-viewer/zoom/lib/styles/index.css";
+import { format } from "date-fns";
 
 interface ProjectDetailsProps {
   project: Project;
@@ -47,42 +50,308 @@ interface Attachment {
   created_at: string;
 }
 
-function ProjectTimeline({ events }: { events: any[] }) {
-  if (!events?.length) return null;
+// File type utilities
+const ACCEPTED_FILE_TYPES = {
+  "application/pdf": [".pdf"],
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
+    ".docx",
+  ],
+  "application/msword": [".doc"],
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": [
+    ".pptx",
+  ],
+  "application/vnd.ms-powerpoint": [".ppt"],
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
+    ".xlsx",
+  ],
+  "application/vnd.ms-excel": [".xls"],
+};
+
+const getFileType = (fileName: string) => {
+  const extension = fileName.split(".").pop()?.toLowerCase();
+  switch (extension) {
+    case "pdf":
+      return "pdf";
+    case "doc":
+    case "docx":
+      return "word";
+    case "ppt":
+    case "pptx":
+      return "powerpoint";
+    case "xls":
+    case "xlsx":
+      return "excel";
+    default:
+      return "unknown";
+  }
+};
+
+const getFileIcon = (fileType: string) => {
+  switch (fileType) {
+    case "pdf":
+      return "mdi:file-pdf";
+    case "word":
+      return "mdi:file-word";
+    case "powerpoint":
+      return "mdi:file-powerpoint";
+    case "excel":
+      return "mdi:file-excel";
+    default:
+      return "mdi:file-document";
+  }
+};
+
+const ProjectIconSelector = ({
+  projectId,
+  currentIcon,
+  theme,
+  onIconUpdate,
+}: {
+  projectId: string;
+  currentIcon: string;
+  theme: string;
+  onIconUpdate: (newIcon: string) => void;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const handleIconSelect = async (selectedIcon: string) => {
+    try {
+      await updateProject(projectId, { picture_url: selectedIcon });
+      onIconUpdate(selectedIcon);
+      setIsOpen(false);
+      toast.success("Project icon updated successfully");
+    } catch (error) {
+      console.error("Error updating project icon:", error);
+      toast.error("Failed to update project icon");
+    }
+  };
 
   return (
-    <div className="relative max-w-3xl mx-auto my-12 py-8 px-4">
-      <div className="absolute left-1/2 transform -translate-x-1/2 h-1 w-full bg-gray-100 rounded top-12">
-        <div
-          className="h-full bg-blue-500 rounded transition-all duration-500"
-          style={{
-            width: `${
-              (events.filter((e) => e.status === "completed").length /
-                events.length) *
-              100
-            }%`,
-          }}
+    <div className="relative group">
+      <div
+        className="inline-block p-1 bg-gray-50 rounded-full relative group cursor-pointer"
+        onClick={() => setIsOpen(true)}
+      >
+        <Icon
+          icon={currentIcon || "mdi:home"}
+          className="size-16"
+          color={theme}
+          style={{ fontSize: "5rem" }}
         />
+        <Button
+          variant="outline"
+          size="sm"
+          className="absolute bottom-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={() => setIsOpen(true)}
+        >
+          <Icon icon="mdi:pencil" className="w-4 h-4" />
+        </Button>
       </div>
-      <div className="relative grid grid-cols-4">
-        {events.map((event, i) => (
-          <div key={i} className="flex flex-col items-center text-center px-2">
-            <div
-              className={`w-4 h-4 rounded-full border-2 ${
-                event.status === "completed"
-                  ? "bg-blue-500 border-blue-600"
-                  : "bg-white border-gray-300"
-              }`}
-            />
-            <p className="text-sm font-medium mt-4 line-clamp-2">
-              {event.title}
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              {new Date(event.event_date).toLocaleDateString("fr-FR")}
-            </p>
-          </div>
-        ))}
+
+      <IconSelector
+        open={isOpen}
+        onOpenChange={setIsOpen}
+        onSelect={handleIconSelect}
+        currentIcon={currentIcon || "mdi:home"}
+      />
+    </div>
+  );
+};
+
+function DocumentPreview({ url, fileType }: { url: string; fileType: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const loadDocument = async () => {
+      if (!containerRef.current) return;
+
+      if (fileType === "word") {
+        try {
+          const response = await fetch(url);
+          const blob = await response.blob();
+          await renderAsync(blob, containerRef.current, containerRef.current, {
+            className: "docx-viewer",
+          });
+        } catch (error) {
+          console.error("Error rendering Word document:", error);
+        }
+      }
+    };
+
+    loadDocument();
+  }, [url, fileType]);
+
+  if (fileType === "pdf") {
+    return (
+      <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js">
+        <div style={{ height: "100%" }}>
+          <Viewer
+            fileUrl={url}
+            plugins={[
+              defaultLayoutPlugin(),
+              pageNavigationPlugin(),
+              zoomPlugin(),
+            ]}
+          />
+        </div>
+      </Worker>
+    );
+  }
+
+  if (fileType === "word") {
+    return <div ref={containerRef} className="h-full overflow-auto" />;
+  }
+
+  return (
+    <div className="flex items-center justify-center h-full text-gray-500">
+      <div className="text-center">
+        <Icon icon={getFileIcon(fileType)} className="w-16 h-16 mx-auto mb-4" />
+        <p>Preview not available for this file type.</p>
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-500 hover:text-blue-600 mt-2 inline-block"
+        >
+          Download to view
+        </a>
       </div>
+    </div>
+  );
+}
+
+interface TimelineEvent {
+  id: string;
+  title: string;
+  event_date: string;
+  icon: string;
+  event_type: "milestone" | "update" | "delay" | "other";
+}
+
+interface ProjectTimelineProps {
+  events: TimelineEvent[];
+  theme: string;
+}
+
+function ProjectTimeline({ events, theme }: ProjectTimelineProps) {
+  if (!events?.length) return null;
+
+  const getGradientStyles = (color: string, isLast: boolean) => {
+    const baseColor = color || "#3b82f6";
+    const style = {
+      "--timeline-color": baseColor,
+      background: isLast
+        ? `linear-gradient(180deg, ${baseColor}20 0%, ${baseColor}05 100%)`
+        : `linear-gradient(180deg, #64748b15 0%, #64748b05 100%)`,
+      border: isLast ? `2px solid ${baseColor}30` : "2px solid #64748b20",
+    } as React.CSSProperties;
+
+    return style;
+  };
+
+  const getEventIcon = (eventType: string) => {
+    switch (eventType) {
+      case "milestone":
+        return "mdi:flag-variant";
+      case "delay":
+        return "mdi:clock-alert";
+      case "other":
+        return "mdi:information";
+      default:
+        return "mdi:calendar-check";
+    }
+  };
+
+  const itemWidth = "w-24"; // Consistent width for alignment
+
+  return (
+    <div className="relative max-w-5xl mx-auto flex flex-col justify-center items-center py-4 px-4 overflow-x-auto">
+      {/* Top row: Squares and lines */}
+      <div className="flex items-center min-w-max flex-col gap-4">
+        <div className="flex flex-row">
+          {events.map((event, index) => {
+            const isLast = index === events.length - 1;
+            const gradientStyles = getGradientStyles(theme, isLast);
+            const icon = event.icon || getEventIcon(event.event_type);
+
+            return (
+              <div key={event.id} className="flex items-center">
+                {/* Event box container - same width as badge container below */}
+                <div className={cn("flex justify-center", itemWidth)}>
+                  <div
+                    style={gradientStyles}
+                    className={cn(
+                      "w-14 h-14 rounded-lg flex items-center justify-center",
+                      "transition-all duration-300 ease-in-out",
+                      "shadow-sm hover:shadow-md m-0 p-0"
+                    )}
+                  >
+                    <Icon
+                      icon={icon}
+                      className={cn(
+                        "w-6 h-6 transition-colors duration-300",
+                        isLast ? `text-[${theme}]` : "text-gray-600"
+                      )}
+                      color={isLast ? theme : "#ADADAD"}
+                    />
+                  </div>
+                </div>
+
+                {/* Connecting line */}
+                {!isLast && (
+                  <div className="h-[3px] min-w-20 w-full bg-gray-100" />
+                )}
+
+                {/* Last item's dotted line */}
+                {isLast && (
+                  <div className="flex h-1 min-w-20 w-full">
+                    <div className="h-[3px] w-1/2 bg-gray-100" />
+                    <div className="ml-1 border-t-[4px] w-1/2 border-dashed border-gray-100" />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex flex-row w-full gap-8 mr-7">
+          {events.map((event, index) => {
+            const isLast = index === events.length - 1;
+
+            return (
+              <div key={`badge-${event.id}`} className="flex items-center">
+                {/* Badge container - same width as square container above */}
+                <div className={cn("flex flex-col items-center", itemWidth)}>
+                  <span
+                    className={cn(
+                      "px-2 py-0.5 rounded-sm text-xs font-medium whitespace-nowrap",
+                      "transition-all duration-300",
+                      isLast
+                        ? `bg-[${theme}] text-white`
+                        : "bg-gray-100 text-gray-700"
+                    )}
+                    style={{
+                      backgroundColor: isLast ? theme : "",
+                      opacity: isLast ? 0.6 : 1,
+                    }}
+                  >
+                    {event.title}
+                  </span>
+
+                  <span className="text-[0.65rem] text-gray-500 mt-1 whitespace-nowrap">
+                    {format(new Date(event.event_date), "MMM dd, yyyy")}
+                  </span>
+                </div>
+
+                {/* Spacer to match the line width in top row */}
+                <div className="w-12" />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Bottom row: Badges and dates */}
+      <div className="flex items-start min-w-max mt-3 bg-red-500"></div>
     </div>
   );
 }
@@ -96,11 +365,7 @@ function DocumentViewer({
 }) {
   const [url, setUrl] = useState<string>("");
   const [loading, setLoading] = useState(true);
-
-  // Initialize plugins
-  const defaultLayoutPluginInstance = defaultLayoutPlugin();
-  const pageNavigationPluginInstance = pageNavigationPlugin();
-  const zoomPluginInstance = zoomPlugin();
+  const fileType = getFileType(attachment.file_name);
 
   useEffect(() => {
     const fetchUrl = async () => {
@@ -170,7 +435,20 @@ function DocumentViewer({
       <DialogTrigger asChild>
         <div className="group flex items-center justify-between p-3 bg-white rounded-lg border hover:border-blue-500 cursor-pointer transition-all">
           <div className="flex items-center gap-3">
-            <Icon icon="mdi:file-pdf" className="w-6 h-6 text-red-500" />
+            <Icon
+              icon={getFileIcon(fileType)}
+              className={`w-6 h-6 ${
+                fileType === "pdf"
+                  ? "text-red-500"
+                  : fileType === "word"
+                  ? "text-blue-500"
+                  : fileType === "powerpoint"
+                  ? "text-orange-500"
+                  : fileType === "excel"
+                  ? "text-green-500"
+                  : "text-gray-500"
+              }`}
+            />
             <div className="flex flex-col">
               <span className="font-medium group-hover:text-blue-600">
                 {attachment.file_name}
@@ -204,18 +482,7 @@ function DocumentViewer({
               <Icon icon="mdi:loading" className="w-8 h-8 animate-spin" />
             </div>
           ) : url ? (
-            <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js">
-              <div style={{ height: "100%" }}>
-                <Viewer
-                  fileUrl={url}
-                  plugins={[
-                    defaultLayoutPluginInstance,
-                    pageNavigationPluginInstance,
-                    zoomPluginInstance,
-                  ]}
-                />
-              </div>
-            </Worker>
+            <DocumentPreview url={url} fileType={fileType} />
           ) : (
             <div className="flex items-center justify-center h-full text-red-500">
               Error loading document
@@ -309,28 +576,28 @@ function DocumentsDrop({ projectId }: { projectId: string }) {
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: {
-      "application/pdf": [".pdf"],
-    },
+    accept: ACCEPTED_FILE_TYPES,
     disabled: uploading,
   });
 
   return (
-    <div className="space-y-6">
+    <div
+      className={cn("space-y-6 ", attachments.length === 0 && "h-[18.5rem]")}
+    >
       <div
         {...getRootProps()}
         className={`
-          border-2 border-dashed rounded-lg p-8
+          border-2 border-dashed rounded-lg p-8 h-full flex items-center justify-center
           transition-colors duration-200 ease-in-out
-          ${isDragActive ? "border-blue-500 bg-blue-50" : "border-gray-300"}
+          ${isDragActive ? "border-blue-500 bg-blue-50" : "border-gray-200"}
           ${uploading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
         `}
       >
         <input {...getInputProps()} />
         <div className="flex flex-col items-center gap-4">
           <Icon
-            icon={uploading ? "mdi:loading" : "mdi:cloud-upload-outline"}
-            className={`w-12 h-12 ${
+            icon={uploading ? "mdi:loading" : "solar:cloud-upload-bold-duotone"}
+            className={`size-10 ${
               isDragActive ? "text-blue-500" : "text-gray-400"
             } ${uploading ? "animate-spin" : ""}`}
           />
@@ -343,7 +610,7 @@ function DocumentsDrop({ projectId }: { projectId: string }) {
                 : "Drag and drop files here"}
             </p>
             <p className="text-sm text-gray-500 mt-1">
-              or click to select files
+              Supported formats: PDF, Word, PowerPoint, Excel
             </p>
           </div>
         </div>
@@ -369,6 +636,7 @@ export default function ProjectDetails({
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description);
   const [tickets, setTickets] = useState<Ticket[]>(project.tickets || []);
+  const [pictureUrl, setPictureUrl] = useState(project.picture_url);
 
   const refreshTickets = useCallback(async () => {
     try {
@@ -386,6 +654,10 @@ export default function ProjectDetails({
   useEffect(() => {
     setTickets(project.tickets || []);
   }, [project.tickets]);
+
+  const handleIconUpdate = (newIcon: string) => {
+    setPictureUrl(newIcon);
+  };
 
   const handleNameChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const newName = e.target.value;
@@ -415,15 +687,15 @@ export default function ProjectDetails({
     <div className="container max-w-7xl mx-auto p-6 space-y-12">
       <div className="text-center space-y-8">
         <div className="inline-block p-6 bg-gray-50 rounded-full">
-          <Icon
-            icon={project.picture_url || "mdi:home"}
-            className="w-20 h-20"
-            color={theme}
-            style={{ fontSize: "5rem" }}
+          <ProjectIconSelector
+            projectId={project.id}
+            currentIcon={pictureUrl || "mdi:home"}
+            theme={theme}
+            onIconUpdate={handleIconUpdate}
           />
         </div>
 
-        <Input
+        <input
           type="text"
           value={name}
           onChange={handleNameChange}
@@ -434,14 +706,14 @@ export default function ProjectDetails({
         <Button
           variant="outline"
           className="gap-2"
-          onClick={() => window.open(project.url || "#", "_blank")}
+          onClick={() => window.open("" || "#", "_blank")}
         >
           <Icon icon="mdi:external-link" className="w-4 h-4" />
           Access Project
         </Button>
       </div>
 
-      <ProjectTimeline events={project.timeline_events} />
+      <ProjectTimeline events={project.timeline_events} theme={theme} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="rounded-xl border p-6 shadow-sm bg-white h-fit">
@@ -469,7 +741,7 @@ export default function ProjectDetails({
 
       <div className="bg-white rounded-xl border p-6 shadow-sm">
         <h2 className="text-xl font-semibold mb-6">Description</h2>
-        <Textarea
+        <textarea
           value={description as string}
           onChange={handleDescriptionChange}
           className="w-full bg-transparent focus:outline-none min-h-[150px] resize-none"

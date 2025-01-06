@@ -18,16 +18,13 @@ export const mainNavItems = [
     title: "Calendar",
     icon: "basil:calendar-solid",
     href: "/dashboard/calendar",
+    disabled: true,
   },
   {
     title: "Analytics",
     icon: "mdi:google-analytics",
     href: "/dashboard/analytics",
+    disabled: true,
     isNew: true,
-  },
-  {
-    title: "Monitoring",
-    icon: "fluent:data-pie-20-filled",
-    href: "/dashboard/monitoring",
   },
 ];
