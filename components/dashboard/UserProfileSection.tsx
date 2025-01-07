@@ -1,5 +1,6 @@
 "use client";
 
+import { signOutAction } from "@/actions/auth";
 import { getUserProfile, type UserProfile } from "@/actions/dashboard";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -12,6 +13,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Icon } from "@iconify/react";
 import { ChevronDown } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { UserProfileDialog } from "./UserProfileDialog";
 
@@ -20,6 +22,7 @@ export function UserProfileSection() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const router = useRouter();
   useEffect(() => {
     const loadProfile = async () => {
       try {
@@ -83,7 +86,13 @@ export function UserProfileSection() {
             <span className="ml-auto text-xs text-muted-foreground">Soon</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <form action="/auth/signout" method="post">
+          <form
+            action={async () => {
+              await signOutAction();
+              router.push("/auth/login");
+            }}
+            method="post"
+          >
             <DropdownMenuItem asChild>
               <button className="w-full flex items-center text-destructive">
                 <Icon icon="mdi-light:logout" className="w-4 h-4 mr-2" />
