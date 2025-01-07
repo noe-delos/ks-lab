@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { updateProject } from "@/actions/project";
@@ -12,7 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Project, Ticket } from "@/types";
+import { Ticket } from "@/types";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { Icon } from "@iconify/react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -38,7 +39,7 @@ import "@react-pdf-viewer/zoom/lib/styles/index.css";
 import { format } from "date-fns";
 
 interface ProjectDetailsProps {
-  project: Project;
+  project: any;
   theme: string;
 }
 
@@ -369,7 +370,6 @@ function DocumentViewer({
 
   useEffect(() => {
     const fetchUrl = async () => {
-      console.log("Fetching signed URL for attachment:", attachment.file_path);
       try {
         const { data, error } = await supabaseAdmin.storage
           .from("project-attachments")
@@ -380,7 +380,6 @@ function DocumentViewer({
           throw error;
         }
 
-        console.log("Signed URL created successfully:", data?.signedUrl);
         if (data?.signedUrl) {
           setUrl(data.signedUrl);
         }
@@ -396,10 +395,8 @@ function DocumentViewer({
   }, [attachment.file_path]);
 
   const handleDelete = async () => {
-    console.log("Delete initiated for attachment:", attachment.id);
     if (window.confirm("Are you sure you want to delete this document?")) {
       try {
-        console.log("Deleting file from storage:", attachment.file_path);
         const { error: storageError } = await supabaseAdmin.storage
           .from("project-attachments")
           .remove([attachment.file_path]);
@@ -409,7 +406,6 @@ function DocumentViewer({
           throw storageError;
         }
 
-        console.log("Deleting database record for attachment:", attachment.id);
         const { error: dbError } = await supabaseAdmin
           .from("project_attachments")
           .delete()
@@ -420,7 +416,6 @@ function DocumentViewer({
           throw dbError;
         }
 
-        console.log("Deletion successful");
         toast.success("Document deleted successfully");
         onDelete?.();
       } catch (error) {
@@ -495,12 +490,10 @@ function DocumentViewer({
 }
 
 function DocumentsDrop({ projectId }: { projectId: string }) {
-  console.log("DocumentsDrop initialized with projectId:", projectId);
   const [uploading, setUploading] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
 
   const fetchAttachments = async () => {
-    console.log("Fetching attachments for project:", projectId);
     try {
       const { data, error } = await supabaseAdmin
         .from("project_attachments")
@@ -513,7 +506,6 @@ function DocumentsDrop({ projectId }: { projectId: string }) {
         throw error;
       }
 
-      console.log("Attachments fetched successfully:", data);
       setAttachments(data || []);
     } catch (error) {
       console.error("Error fetching attachments:", error);
@@ -527,16 +519,13 @@ function DocumentsDrop({ projectId }: { projectId: string }) {
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
-      console.log("Files dropped:", acceptedFiles);
       setUploading(true);
       try {
         for (const file of acceptedFiles) {
-          console.log("Processing file:", file.name);
           const fileExt = file.name.split(".").pop();
           const fileName = `${Math.random().toString(36).slice(2)}.${fileExt}`;
           const filePath = `${projectId}/${fileName}`;
 
-          console.log("Uploading file to storage:", filePath);
           const { error: uploadError } = await supabaseAdmin.storage
             .from("project-attachments")
             .upload(filePath, file);
@@ -546,7 +535,6 @@ function DocumentsDrop({ projectId }: { projectId: string }) {
             throw uploadError;
           }
 
-          console.log("Creating attachment record in database");
           const { error: dbError } = await supabaseAdmin
             .from("project_attachments")
             .insert({
@@ -561,7 +549,6 @@ function DocumentsDrop({ projectId }: { projectId: string }) {
           }
         }
 
-        console.log("All files processed successfully");
         toast.success("Files uploaded successfully");
         fetchAttachments();
       } catch (error) {

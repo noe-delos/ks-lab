@@ -207,7 +207,6 @@ export async function getTicketComments(ticketId: string) {
     .eq("ticket_id", ticketId)
     .order("created_at", { ascending: true });
 
-  console.log("fetched comments:", comments);
   if (error) throw error;
 
   if (!comments || comments.length === 0) {

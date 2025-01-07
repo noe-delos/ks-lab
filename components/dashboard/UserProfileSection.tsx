@@ -27,7 +27,6 @@ export function UserProfileSection() {
     const loadProfile = async () => {
       try {
         const data = await getUserProfile();
-        console.log("@@@", data);
         setProfile(data);
       } catch (error) {
         console.error("Error loading profile:", error);
