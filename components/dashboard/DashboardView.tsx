@@ -408,7 +408,7 @@ function SortableProjectCard({
   );
 }
 
-function SortableTableRow({ project }: { project: Project }) {
+function SortableTableRow({ project }: { project: any }) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: project.id });
 
@@ -433,7 +433,7 @@ function SortableTableRow({ project }: { project: Project }) {
         <div className="flex items-center gap-3">
           <div {...listeners} className="cursor-grab active:cursor-grabbing">
             <Icon
-              icon="material-symbols:drag-indicator"
+              icon={project.picture_url}
               className="w-5 h-5 text-gray-400 hover:text-gray-600"
             />
           </div>
