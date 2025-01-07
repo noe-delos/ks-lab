@@ -1,13 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { getUserProfile } from "@/actions/dashboard";
 import { getProject } from "@/actions/project";
 import ProjectDetails from "@/components/projects/project/";
-import { Params } from "next/dist/server/request/params";
 
-interface PageProps {
-  params: Params;
-}
-
-export default async function ProjectPage({ params }: PageProps) {
+export default async function ProjectPage({ params }: any) {
   // Convert params to string and validate
   const projectId = Array.isArray(params.id) ? params.id[0] : params.id;
 

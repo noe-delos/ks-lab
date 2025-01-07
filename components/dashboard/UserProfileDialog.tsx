@@ -64,6 +64,7 @@ export function UserProfileDialog({
 
       onOpenChange(false);
     } catch (error) {
+      console.error(error);
     } finally {
       setIsLoading(false);
     }

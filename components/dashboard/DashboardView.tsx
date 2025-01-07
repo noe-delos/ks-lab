@@ -325,7 +325,7 @@ function SortableProjectCard({
   project,
   theme,
 }: {
-  project: Project;
+  project: any;
   theme: string;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } =

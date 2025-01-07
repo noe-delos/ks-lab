@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react/no-unescaped-entities */
 "use client";
 
@@ -115,11 +116,11 @@ export function TicketsFilter({ onFilterChange }: TicketsFilterProps) {
     category: "status" | "priority",
     value: string
   ) => {
-    const currentFilters = filters[category];
+    const currentFilters: any = filters[category];
     let newFilters: string[];
 
     if (currentFilters.includes(value)) {
-      newFilters = currentFilters.filter((item) => item !== value);
+      newFilters = currentFilters.filter((item: any) => item !== value);
     } else {
       newFilters = [...currentFilters, value];
     }

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // app/tickets/[id]/page.tsx
 import { getUserProfile } from "@/actions/dashboard";
 import { getTicketById, getTicketComments } from "@/actions/tickets";
@@ -8,13 +9,7 @@ import { notFound } from "next/navigation";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-interface Props {
-  params: {
-    id: string;
-  };
-}
-
-export default async function TicketPage({ params }: Props) {
+export default async function TicketPage({ params }: any) {
   try {
     const [ticket, comments, profile] = await Promise.all([
       getTicketById(params.id),

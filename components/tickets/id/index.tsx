@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable react/no-unescaped-entities */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
@@ -96,8 +97,8 @@ interface Comment {
 interface EnhancedTicket extends Ticket {
   project: Project;
   attachments: Attachment[];
-  created_by_user?: User;
-  assigned_to_user?: User;
+  created_by_user?: any;
+  assigned_to_user?: any;
 }
 
 interface TicketDetailLayoutProps {
@@ -127,7 +128,6 @@ export function TicketDetailLayout({
   const [description, setDescription] = useState(ticket.description || "");
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
-  const [isUpdating, setIsUpdating] = useState(false);
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [availableProjects, setAvailableProjects] = useState<Project[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
@@ -161,7 +161,6 @@ export function TicketDetailLayout({
 
   const updateTicketField = async (field: string, value: any) => {
     try {
-      setIsUpdating(true);
       const { error } = await supabaseAdmin
         .from("tickets")
         .update({ [field]: value })
@@ -174,8 +173,6 @@ export function TicketDetailLayout({
     } catch (error) {
       console.error(`Error updating ${field}:`, error);
       toast.error(`Erreur lors de la mise à jour du ${field}`);
-    } finally {
-      setIsUpdating(false);
     }
   };
 

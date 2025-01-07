@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -693,7 +694,7 @@ export default function ProjectDetails({
         <Button
           variant="outline"
           className="gap-2"
-          onClick={() => window.open("" || "#", "_blank")}
+          onClick={() => window.open("#", "_blank")}
         >
           <Icon icon="mdi:external-link" className="w-4 h-4" />
           Access Project
