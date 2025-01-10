@@ -29,13 +29,15 @@ import { rouge } from "@/config/styling";
 import { createClient } from "@/utils/supabase/client";
 
 export default function RegisterPage() {
-  const [formData, setFormData] = useState({
+  const initialFormState = {
     email: "",
     password: "",
     confirmPassword: "",
     fullName: "",
     companyCode: "",
-  });
+  };
+
+  const [formData, setFormData] = useState(initialFormState);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showEmailDialog, setShowEmailDialog] = useState(false);
@@ -67,6 +69,11 @@ export default function RegisterPage() {
     }
 
     return response.json();
+  };
+
+  const resetForm = () => {
+    setFormData(initialFormState);
+    setShowPassword(false);
   };
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -108,6 +115,7 @@ export default function RegisterPage() {
         "Inscription réussie ! Veuillez vérifier votre email pour confirmer votre compte."
       );
       setShowEmailDialog(true);
+      resetForm(); // Reset the form after successful registration
     } catch (error: any) {
       toast.error(error.message);
     } finally {
@@ -115,10 +123,14 @@ export default function RegisterPage() {
     }
   };
 
+  const handleDialogClose = () => {
+    setShowEmailDialog(false);
+  };
+
   return (
     <div className="h-full flex flex-col">
       {/* Email Confirmation Dialog */}
-      <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
+      <Dialog open={showEmailDialog} onOpenChange={handleDialogClose}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader className="pt-4">
             <DialogTitle className="text-center flex flex-col items-center gap-4 pb-3">
