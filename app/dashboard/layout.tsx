@@ -38,8 +38,8 @@ export default async function DashboardLayout({
   return (
     <div className="h-full bg-[hsl(var(--background))]">
       <SidebarProvider>
-        {/* Large screen layout - unchanged */}
-        <div className="hidden lg:flex">
+        {/* Desktop layout */}
+        <div className="hidden md:flex h-full">
           <Sidebar className="bg-[hsl(var(--background))] border-none">
             <SidebarHeader className="p-6">
               <Suspense fallback={<CompanyBrandingSkeleton />}>
@@ -57,19 +57,20 @@ export default async function DashboardLayout({
               </Suspense>
             </SidebarFooter>
           </Sidebar>
+
+          <main className="flex-1 p-6 pl-0 pb-0 pr-0">
+            <div className="bg-card rounded-tl-2xl border shadow-[0_2px_8px_0_rgba(0,0,0,0.08)] h-full">
+              <NavigationHeader
+                profile={profile}
+                projects={projects as Project[]}
+              />
+              {children}
+            </div>
+          </main>
         </div>
-        <main className="overflow-hidden hidden md:block w-full p-6 pl-0 pb-0 pr-0 ">
-          <div className="bg-card rounded-tl-2xl border shadow-[0_2px_8px_0_rgba(0,0,0,0.08)] h-full">
-            <NavigationHeader
-              profile={profile}
-              projects={projects as Project[]}
-            />
-            {children}
-          </div>
-        </main>
 
         {/* Mobile layout */}
-        <div className="flex flex-col lg:hidden">
+        <div className="md:hidden flex flex-col h-full">
           <MobileNav profile={profile} />
           <main className="flex-1 p-4">{children}</main>
         </div>

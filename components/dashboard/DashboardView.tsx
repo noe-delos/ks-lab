@@ -11,9 +11,11 @@ import {
   getCompanyUsers,
   type CompanyUser,
   type Meeting,
+  type Project,
 } from "@/actions/dashboard";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   DndContext,
   DragEndEvent,
@@ -68,7 +70,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Icon } from "@iconify/react";
 import { motion } from "framer-motion";
 import { GripVertical, Ticket } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -78,15 +80,6 @@ import {
   YAxis,
 } from "recharts";
 import { CreateMeetingDialog } from "./CreateMeetingDialog";
-
-interface Project {
-  id: string;
-  name: string;
-  status: "planning" | "in_progress" | "on_hold" | "completed" | "cancelled";
-  progress: number;
-  icon: string;
-  version: string;
-}
 
 const chartConfig: ChartConfig = {
   projects: {
@@ -103,24 +96,112 @@ const chartConfig: ChartConfig = {
   },
 };
 
-function ActivityChart(profile: any) {
+// Loading skeletons
+function ProfileSkeleton() {
+  return (
+    <div className="flex items-start gap-6 p-8 bg-white rounded-xl">
+      <Skeleton className="size-24 rounded-xl" />
+      <div className="flex-1 space-y-4">
+        <Skeleton className="h-8 w-2/3" />
+        <div className="flex gap-4">
+          <Skeleton className="h-6 w-32" />
+          <Skeleton className="h-6 w-32" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProjectCardSkeleton() {
+  return (
+    <Card className="bg-white border shadow-sm aspect-square">
+      <CardContent className="p-4 relative h-full">
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-10 w-10 rounded-lg" />
+            <Skeleton className="h-6 w-2/3" />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-2 w-full" />
+            <div className="flex justify-between">
+              <Skeleton className="h-4 w-12" />
+              <Skeleton className="h-4 w-12" />
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ActivityChartSkeleton() {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-6 w-32" />
+          <Skeleton className="h-4 w-48" />
+        </div>
+        <Skeleton className="h-10 w-48" />
+      </CardHeader>
+      <CardContent>
+        <Skeleton className="h-[200px] w-full" />
+      </CardContent>
+    </Card>
+  );
+}
+
+function TableRowSkeleton() {
+  return (
+    <TableRow>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-8 w-8 rounded-full" />
+          <div className="space-y-1">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-3 w-24" />
+          </div>
+        </div>
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-20" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-16" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-24" />
+      </TableCell>
+    </TableRow>
+  );
+}
+
+function ActivityChart({ profile }: { profile: UserProfile }) {
   const [dateRange, setDateRange] = useState({
     from: new Date(2024, 0, 1),
     to: new Date(),
   });
   const [chartData, setChartData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function fetchActivityData() {
-      const data = await getActivityData(
-        profile?.profile.company?.id as string
-      );
-      setChartData(data as any);
+      if (profile?.company?.id) {
+        setIsLoading(true);
+        try {
+          const data = await getActivityData(profile.company.id);
+          setChartData(data as any);
+        } catch (error) {
+          console.error("Error fetching activity data:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      }
     }
-    if (profile?.profile.company?.id) {
-      fetchActivityData();
-    }
-  }, [profile]);
+    fetchActivityData();
+  }, [profile?.company?.id]);
+
+  if (isLoading) return <ActivityChartSkeleton />;
 
   return (
     <Card>
@@ -223,7 +304,35 @@ function MeetingDialog({ meeting }: { meeting: Meeting }) {
   );
 }
 
-function UsersTable({ users }: { users: CompanyUser[] }) {
+function UsersTable({
+  users,
+  isLoading,
+}: {
+  users: CompanyUser[];
+  isLoading: boolean;
+}) {
+  if (isLoading) {
+    return (
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader className="bg-gray-50">
+            <TableRow>
+              <TableHead>Utilisateur</TableHead>
+              <TableHead>Rôle</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Date d'arrivée</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <TableRowSkeleton key={i} />
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-md border">
       <Table>
@@ -277,10 +386,38 @@ function UsersTable({ users }: { users: CompanyUser[] }) {
 function MeetingsList({
   meetings,
   users,
+  isLoading,
 }: {
   meetings: Meeting[];
   users: CompanyUser[];
+  isLoading: boolean;
 }) {
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i} className="cursor-pointer hover:bg-gray-50">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-2">
+                    <Skeleton className="h-5 w-48" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                  <Skeleton className="h-6 w-24" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -324,9 +461,11 @@ function MeetingsList({
 function SortableProjectCard({
   project,
   theme,
+  isLoading,
 }: {
-  project: any;
+  project: Project;
   theme: string;
+  isLoading?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: project.id });
@@ -335,6 +474,10 @@ function SortableProjectCard({
     transform: CSS.Transform.toString(transform),
     transition,
   };
+
+  if (isLoading) {
+    return <ProjectCardSkeleton />;
+  }
 
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
@@ -356,7 +499,7 @@ function SortableProjectCard({
                     style={{ backgroundColor: `${theme}15` }}
                   >
                     <Icon
-                      icon={project.picture_url}
+                      icon={project.picture_url as string}
                       className="w-6 h-6"
                       style={{ color: theme }}
                     />
@@ -382,7 +525,7 @@ function SortableProjectCard({
                   <span>{project.progress}%</span>
                   <div className="flex items-center gap-1">
                     <Ticket className="w-3 h-3" />
-                    <span>{project.tickets[0]?.count || 0}</span>
+                    <span>{project.tickets_count || 0}</span>
                   </div>
                 </div>
               </div>
@@ -408,7 +551,13 @@ function SortableProjectCard({
   );
 }
 
-function SortableTableRow({ project }: { project: any }) {
+function SortableTableRow({
+  project,
+  isLoading,
+}: {
+  project: Project;
+  isLoading?: boolean;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: project.id });
 
@@ -416,6 +565,10 @@ function SortableTableRow({ project }: { project: any }) {
     transform: CSS.Transform.toString(transform),
     transition,
   };
+
+  if (isLoading) {
+    return <TableRowSkeleton />;
+  }
 
   const projectIcon = getProjectIcon(project.status);
 
@@ -433,7 +586,7 @@ function SortableTableRow({ project }: { project: any }) {
         <div className="flex items-center gap-3">
           <div {...listeners} className="cursor-grab active:cursor-grabbing">
             <Icon
-              icon={project.picture_url}
+              icon={project.picture_url as string}
               className="w-5 h-5 text-gray-400 hover:text-gray-600"
             />
           </div>
@@ -461,6 +614,7 @@ function SortableTableRow({ project }: { project: any }) {
 interface ProjectsSectionProps {
   projects?: Project[];
   theme?: string;
+  isLoading?: boolean;
 }
 
 function getProjectIcon(status: string): string {
@@ -497,9 +651,10 @@ function formatProjectStatus(status: string): string {
   }
 }
 
-export function ProjectsSection({
+function ProjectsSection({
   theme,
   projects = [],
+  isLoading,
 }: ProjectsSectionProps) {
   const [items, setItems] = React.useState(projects);
   const sensors = useSensors(
@@ -520,6 +675,16 @@ export function ProjectsSection({
         return arrayMove(items, oldIndex, newIndex);
       });
     }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <ProjectCardSkeleton key={i} />
+        ))}
+      </div>
+    );
   }
 
   return (
@@ -609,19 +774,34 @@ export function DashboardView({ profile }: { profile: UserProfile }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [users, setUsers] = useState<CompanyUser[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [isLoading, setIsLoading] = useState({
+    projects: true,
+    users: true,
+    meetings: true,
+  });
 
   useEffect(() => {
     async function fetchDashboardData() {
       if (profile?.company?.id) {
-        const [projectsData, usersData, meetingsData] = await Promise.all([
-          getCompanyProjects(profile.company.id),
-          getCompanyUsers(profile.company.id),
-          getCompanyMeetings(profile.company.id),
-        ]);
+        try {
+          const [projectsData, usersData, meetingsData] = await Promise.all([
+            getCompanyProjects(profile.company.id).finally(() =>
+              setIsLoading((prev) => ({ ...prev, projects: false }))
+            ),
+            getCompanyUsers(profile.company.id).finally(() =>
+              setIsLoading((prev) => ({ ...prev, users: false }))
+            ),
+            getCompanyMeetings(profile.company.id).finally(() =>
+              setIsLoading((prev) => ({ ...prev, meetings: false }))
+            ),
+          ]);
 
-        setProjects(projectsData as any);
-        setUsers(usersData);
-        setMeetings(meetingsData);
+          setProjects(projectsData);
+          setUsers(usersData);
+          setMeetings(meetingsData);
+        } catch (error) {
+          console.error("Error fetching dashboard data:", error);
+        }
       }
     }
 
@@ -635,86 +815,90 @@ export function DashboardView({ profile }: { profile: UserProfile }) {
       className="max-w-7xl mx-auto px-6 py-8 space-y-8"
     >
       {/* Profile Section */}
-      <motion.section
-        initial={{ y: -10 }}
-        animate={{ y: 0 }}
-        className="flex items-start gap-6 p-8 bg-white rounded-xl"
-      >
-        <div className="relative size-24">
-          <div className="size-24 rounded-xl bg-gray-50 border-[1.5px] border-gray-100 flex items-center justify-center overflow-hidden">
-            <img
-              src="/logo/brand-logo-white.png"
-              alt="Brand logo"
-              className="size-56 object-contain"
-            />
-          </div>
-          {profile.company?.icon_url && (
-            <div className="absolute inset-0 flex items-center justify-center">
+      <Suspense fallback={<ProfileSkeleton />}>
+        <motion.section
+          initial={{ y: -10 }}
+          animate={{ y: 0 }}
+          className="flex items-start gap-6 p-8 bg-white rounded-xl"
+        >
+          <div className="relative size-24">
+            <div className="size-24 rounded-xl bg-gray-50 border-[1.5px] border-gray-100 flex items-center justify-center overflow-hidden">
               <img
-                src={profile.company.icon_url}
-                alt={`${profile.company.name} logo`}
-                width={80}
-                height={80}
-                className="rounded-full border-2 border-white shadow-sm"
+                src="/logo/brand-logo-white.png"
+                alt="Brand logo"
+                className="size-56 object-contain"
               />
             </div>
-          )}
-        </div>
-
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <span className="text-3xl font-medium">Votre espace</span>
-            {profile.company?.name && (
-              <span
-                className="text-3xl font-bold"
-                style={{ color: profile.company.theme_color || "currentColor" }}
-              >
-                {profile.company.name}
-              </span>
+            {profile.company?.icon_url && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <img
+                  src={profile.company.icon_url}
+                  alt={`${profile.company.name} logo`}
+                  width={80}
+                  height={80}
+                  className="rounded-full border-2 border-white shadow-sm"
+                />
+              </div>
             )}
           </div>
 
-          <div className="flex items-center gap-4 mt-4">
-            <div className="flex gap-3">
-              <Badge
-                className="rounded-full border border-blue-200 px-3 py-1"
-                style={{
-                  backgroundColor:
-                    profile.company?.theme_color || "currentColor",
-                  color: "white",
-                }}
-              >
-                <Icon
-                  icon="icon-park-solid:building-one"
-                  className="w-4 h-4 mr-2"
-                />
-                {profile.company?.type || "Entreprise"}
-              </Badge>
-              <Badge className="rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 px-3 py-1">
-                <Avatar className="w-4 h-4 mr-2">
-                  <AvatarImage src={profile.avatar_url} />
-                  <AvatarFallback>
-                    {profile.name
-                      ?.split(" ")
-                      .map((n) => n[0])
-                      .join("")}
-                  </AvatarFallback>
-                </Avatar>
-                {profile.role || "Admin"}
-              </Badge>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <span className="text-3xl font-medium">Votre espace</span>
+              {profile.company?.name && (
+                <span
+                  className="text-3xl font-bold"
+                  style={{
+                    color: profile.company.theme_color || "currentColor",
+                  }}
+                >
+                  {profile.company.name}
+                </span>
+              )}
             </div>
-            <span className="text-sm text-gray-500">
-              Mis à jour le{" "}
-              {new Date(
-                profile.company?.updated_at || Date.now()
-              ).toLocaleDateString("fr-FR", {
-                day: "numeric",
-                month: "short",
-              })}
-            </span>
+
+            <div className="flex items-center gap-4 mt-4">
+              <div className="flex gap-3">
+                <Badge
+                  className="rounded-full border border-blue-200 px-3 py-1"
+                  style={{
+                    backgroundColor:
+                      profile.company?.theme_color || "currentColor",
+                    color: "white",
+                  }}
+                >
+                  <Icon
+                    icon="icon-park-solid:building-one"
+                    className="w-4 h-4 mr-2"
+                  />
+                  {profile.company?.type || "Entreprise"}
+                </Badge>
+                <Badge className="rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 px-3 py-1">
+                  <Avatar className="w-4 h-4 mr-2">
+                    <AvatarImage src={profile.avatar_url} />
+                    <AvatarFallback>
+                      {profile.name
+                        ?.split(" ")
+                        .map((n) => n[0])
+                        .join("")}
+                    </AvatarFallback>
+                  </Avatar>
+                  {profile.role || "Admin"}
+                </Badge>
+              </div>
+              <span className="text-sm text-gray-500">
+                Mis à jour le{" "}
+                {new Date(
+                  profile.company?.updated_at || Date.now()
+                ).toLocaleDateString("fr-FR", {
+                  day: "numeric",
+                  month: "short",
+                })}
+              </span>
+            </div>
           </div>
-        </div>
-      </motion.section>
+        </motion.section>
+      </Suspense>
 
       {/* Projects and Activity Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pb-8">
@@ -727,6 +911,7 @@ export function DashboardView({ profile }: { profile: UserProfile }) {
           <ProjectsSection
             theme={profile?.company?.theme_color}
             projects={projects}
+            isLoading={isLoading.projects}
           />
         </motion.section>
 
@@ -735,7 +920,9 @@ export function DashboardView({ profile }: { profile: UserProfile }) {
           animate={{ x: 0, opacity: 1 }}
           transition={{ duration: 0.3 }}
         >
-          <ActivityChart profile={profile} />
+          <Suspense fallback={<ActivityChartSkeleton />}>
+            <ActivityChart profile={profile} />
+          </Suspense>
         </motion.section>
       </div>
 
@@ -748,7 +935,17 @@ export function DashboardView({ profile }: { profile: UserProfile }) {
           className="space-y-4"
         >
           <h2 className="text-2xl font-semibold">Utilisateurs</h2>
-          <UsersTable users={users} />
+          <Suspense
+            fallback={
+              <div className="space-y-4">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <TableRowSkeleton key={i} />
+                ))}
+              </div>
+            }
+          >
+            <UsersTable users={users} isLoading={isLoading.users} />
+          </Suspense>
         </motion.section>
 
         <motion.section
@@ -756,7 +953,31 @@ export function DashboardView({ profile }: { profile: UserProfile }) {
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.3 }}
         >
-          <MeetingsList meetings={meetings} users={users} />
+          <Suspense
+            fallback={
+              <div className="space-y-4">
+                <Skeleton className="h-8 w-48" />
+                <div className="space-y-2">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Card key={i}>
+                      <CardContent className="p-4">
+                        <div className="flex justify-between">
+                          <Skeleton className="h-6 w-32" />
+                          <Skeleton className="h-6 w-24" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            }
+          >
+            <MeetingsList
+              meetings={meetings}
+              users={users}
+              isLoading={isLoading.meetings}
+            />
+          </Suspense>
         </motion.section>
       </div>
     </motion.div>
