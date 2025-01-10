@@ -11,7 +11,7 @@ export async function middleware(request: NextRequest) {
   const path = new URL(request.url).pathname;
 
   const protectedRoutes = ["/dashboard"];
-  const authRoutes = ["/login", "/register"];
+  const authRoutes = ["/auth/login", "/auth/register"];
 
   const isProtectedRoute = protectedRoutes.includes(path);
   const isAuthRoute = authRoutes.includes(path);
@@ -24,7 +24,7 @@ export async function middleware(request: NextRequest) {
     }
 
     if (isAuthRoute && user) {
-      return NextResponse.redirect(new URL("/", request.url));
+      return NextResponse.redirect(new URL("/dashboard", request.url));
     }
   }
 
