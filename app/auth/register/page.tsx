@@ -1,15 +1,23 @@
+/* eslint-disable react/no-unescaped-entities */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { Icon } from "@iconify/react";
 import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   InputOTP,
@@ -30,7 +38,7 @@ export default function RegisterPage() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
   const supabase = createClient();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -99,7 +107,7 @@ export default function RegisterPage() {
       toast.success(
         "Inscription réussie ! Veuillez vérifier votre email pour confirmer votre compte."
       );
-      router.push("/auth/verify-email");
+      setShowEmailDialog(true);
     } catch (error: any) {
       toast.error(error.message);
     } finally {
@@ -109,6 +117,29 @@ export default function RegisterPage() {
 
   return (
     <div className="h-full flex flex-col">
+      {/* Email Confirmation Dialog */}
+      <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader className="pt-4">
+            <DialogTitle className="text-center flex flex-col items-center gap-4 pb-3">
+              <div className="bg-emerald-100 rounded-full p-3 flex items-center justify-center">
+                <Icon icon="fa:send" className="size-5 text-emerald-500" />
+              </div>
+              Email de confirmation envoyé
+            </DialogTitle>
+            <DialogDescription className="text-center pt-2">
+              Nous avons envoyé un email de confirmation à{" "}
+              <strong>{formData.email}</strong>. Veuillez cliquer sur le lien
+              dans l'email pour activer votre compte.
+              <p className="mt-4 text-xs opacity-80 pt-4">
+                Si vous ne trouvez pas l'email, veuillez vérifier votre dossier
+                spam.
+              </p>
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+
       {/* Top Logo */}
       <div className="flex-1 flex items-start justify-center pt-8">
         <motion.div
