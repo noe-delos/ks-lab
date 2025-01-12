@@ -36,10 +36,10 @@ export default async function DashboardLayout({
     .order("created_at", { ascending: false });
 
   return (
-    <div className="h-full bg-[hsl(var(--background))]">
-      <SidebarProvider>
+    <div className="h-full bg-[hsl(var(--background))] w-full">
+      <SidebarProvider className="w-full">
         {/* Desktop layout */}
-        <div className="hidden md:flex h-full">
+        <div className="hidden md:flex h-full w-full">
           <Sidebar className="bg-[hsl(var(--background))] border-none">
             <SidebarHeader className="p-6">
               <Suspense fallback={<CompanyBrandingSkeleton />}>
@@ -58,8 +58,8 @@ export default async function DashboardLayout({
             </SidebarFooter>
           </Sidebar>
 
-          <main className="flex-1 p-6 pl-0 pb-0 pr-0">
-            <div className="bg-card rounded-tl-2xl border shadow-[0_2px_8px_0_rgba(0,0,0,0.08)] h-full">
+          <main className="flex-1 p-6 pl-0 pb-0 pr-0 w-full ">
+            <div className="bg-card rounded-tl-2xl border shadow-[0_2px_8px_0_rgba(0,0,0,0.08)] h-full w-full">
               <NavigationHeader
                 profile={profile}
                 projects={projects as Project[]}
